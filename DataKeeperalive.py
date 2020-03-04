@@ -13,7 +13,6 @@ args = parser.parse_args()
 
 socket  = zmq.Context().socket(zmq.PUB)
 socket.connect("tcp://%s:5555"%args.IP_MASTER)
-print(args.IP_MASTER)
 while True :
     socket.send_string("%s %s" % ("alive",str(args.IP_HOME+":"+args.PORT)))
     time.sleep(2)
