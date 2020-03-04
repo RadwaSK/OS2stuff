@@ -2,11 +2,10 @@ import zmq
 import sys
 import time
 
-def listenToClient(server_port):
+def listenToClient(server_ip,server_port):
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    ip = '127.0.0.1'
-    socket.bind("tcp://" + ip + ':' + server_port)
+    socket.bind("tcp://" + server_ip + ':' + server_port)
     client_socket = context.socket(zmq.REQ)
 
     while True:
@@ -20,7 +19,7 @@ def listenToClient(server_port):
                                             # of first alive data keeper
             # node_data is like {'ip': '127.0.0.1', 'port': '5555', node_id: 3}
             msg = {'ip': node_data['ip'], 'port': node_data['port']}
-            client_socket.connect("tcp://" + ip + ':' + req_msg['user_port'])
+            client_socket.connect("tcp://" + server_ip + ':' + req_msg['user_port'])
             client_socket.send_pyobj(msg)
             client_socket.close()
 
@@ -29,6 +28,13 @@ def listenToClient(server_port):
             node_data = getNode(req_msg['file_name']) # function to be implemented that
                                                 # gets node of data keeper storing file_name
             msg = {'ip': node_data['ip'], 'port': node_data['port']}
-            client_socket.connect("tcp://" + ip + ':' + req_msg['user_port'])
+            client_socket.connect("tcp://" + server_ip + ':' + req_msg['user_port'])
             client_socket.send_pyobj(msg)
             client_socket.close()
+
+
+
+
+ip = sys.argv[1]
+port = sys.argv[2]
+listenToClient(ip,port)
