@@ -1,0 +1,1 @@
+ps -o pid -C ZMQbg/1 | sort | xargs kill -9
