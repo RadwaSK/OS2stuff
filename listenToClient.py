@@ -2,11 +2,10 @@ import zmq
 import sys
 import time
 
-def listenToClient(server_ip,server_port):
+def listenToClient(server_ip, server_port):
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind("tcp://" + server_ip + ':' + server_port)
-    client_socket = context.socket(zmq.REQ)
 
     while True:
         # req_msg is like
@@ -19,22 +18,17 @@ def listenToClient(server_ip,server_port):
                                             # of first alive data keeper
             # node_data is like {'ip': '127.0.0.1', 'port': '5555', node_id: 3}
             msg = {'ip': node_data['ip'], 'port': node_data['port']}
-            client_socket.connect("tcp://" + server_ip + ':' + req_msg['user_port'])
-            client_socket.send_pyobj(msg)
-            client_socket.close()
+            socket.send_pyobj(msg)
+
 
 
         elif req_msg['req'] == 'download':
             node_data = getNode(req_msg['file_name']) # function to be implemented that
                                                 # gets node of data keeper storing file_name
             msg = {'ip': node_data['ip'], 'port': node_data['port']}
-            client_socket.connect("tcp://" + server_ip + ':' + req_msg['user_port'])
-            client_socket.send_pyobj(msg)
-            client_socket.close()
-
-
+            socket.send_pyobj(msg)
 
 
 ip = sys.argv[1]
 port = sys.argv[2]
-listenToClient(ip,port)
+listenToClient(ip, port)

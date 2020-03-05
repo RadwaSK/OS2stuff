@@ -4,11 +4,11 @@ import time
 import os
 import numpy as np
 
-def receive_alive_Msg(master_ip,num_of_nodes):
+def receive_alive_Msg(master_ip, num_of_nodes):
     context = zmq.Context()
     socket = context.socket(zmq.SUB)
     socket.RCVTIMEO = 100
-    socket.bind("tcp://%s:5555" %master_ip)
+    socket.bind("tcp://%s:5555" % master_ip)
     socket.setsockopt_string(zmq.SUBSCRIBE, "alive")
     i=0
     while i<num_of_nodes:#only until know
