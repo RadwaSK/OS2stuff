@@ -1,7 +1,3 @@
-from sharedMemory import *
-import zmq
-
-
 def upload(ip_port, socket):
     # the ip_port is for the data keeper saving the file
     msg = socket.recv_pyobj()
