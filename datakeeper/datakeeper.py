@@ -31,7 +31,10 @@ while True :
             output.write(video)
 
     elif msg["req"] == "download":
-        # TO DO
+        filename = msg['filename']
+        video = open(order[1],'rb').read()
+        msg_to_client = {'filename': filename, 'video': video}
+        socket.send_pyobj(msg_to_client)
         pass
 
     
