@@ -1,4 +1,4 @@
-def upload(ip_port, socket):
+def download(ip_port, socket):
     # ip_port is for the user requesting the file
 
     # TO DO

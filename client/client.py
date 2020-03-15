@@ -11,7 +11,7 @@ def upload(socket, order):
         video=open(order[1],'rb').read()
         socket.close()
         socket.connect(message["address"])
-        socket.send_pyobj({order[1]:video})
+        socket.send_pyobj({"req":"upload","filename":order[1],"video":video})
     else:
         print("file is already uploaded")
     

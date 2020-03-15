@@ -4,7 +4,7 @@ from listenToClient import *
 from checkAlive import *
 
 # Argv should be sth like this
-# 'listener_to_alive_ip_port' 'listener_to_clients_ip_port' 'N_clients'
+# 'listener_to_alive_ip_port'
 
 listener_to_alive_ip_port = sys.argv[1]
 
