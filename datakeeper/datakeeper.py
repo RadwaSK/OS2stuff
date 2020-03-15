@@ -1,29 +1,37 @@
 import zmq
 import sys
 import os
-import download
 
+port = sys.argv[1] # port of the datakeeper
 
-
-
-port= sys.argv[1]
 context = zmq.Context()
+# Socket, type server
 socket = context.socket(zmq.REQ)
+
 os.system("hostname -I >> ip.txt")
+
 with open ("ip.txt", "r") as myfile:
-    data=myfile.readlines()
+    data = myfile.readlines()
+
 socket.bind("tcp://%s:%s" %data[0] %port)
 
 while True :
-    #master msg
-    msg=socket.recv_pyobj()
+    # master msg
+    # Receive from client
+    msg = socket.recv_pyobj()
+
     if msg["req"]=="upload":
         filename = msg['filename']
+        if not os.path.exists('videos'):
+            os.mkdir('videos')
+
+        path = 'videos/' + filename
         video = msg['video']
-        with open (filename,"wb") as output:
+        with open (path,"wb") as output:
             output.write(video)
 
     elif msg["req"] == "download":
-        download.download(9999,socket)
+        # TO DO
+        pass
 
     
