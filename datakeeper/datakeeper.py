@@ -36,17 +36,19 @@ while True :
         video = msg['video']
         with open (path,"wb") as output:
             output.write(video)
-        socket_master.send_pyobj({'success': True, 'filename':filename})
+        if msg['checkWithMaster']:
+            socket_master.send_pyobj({'success': True, 'filename':filename})
 
     elif msg["req"] == "download":
         filename = msg['filename']
         video = open(order[1],'rb').read()
         msg_to_client = {'filename': filename, 'video': video}
+        socket.close()
         client_socket = context.socket(zmq.PUSH)
         client_socket.bind("tcp://*:"+port)
         client_socket.send_pyobj(msg_to_client)
         client_socket.close()
-
+        socket.bind("tcp://*:"+port)
         # To master to make dk not busy
         dummy_m = {'success': True}
         socket_master.send_pyobj({'success': True, 'filename': filename})

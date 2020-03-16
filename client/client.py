@@ -11,7 +11,7 @@ def upload(socket, order):
         video = open(order[1],'rb').read()
         dk_socket = context.socket(zmq.PUSH)
         dk_socket.connect(message["address"]) #ip:port
-        dk_socket.send_pyobj({"req": "upload", "filename": order[1], "video": video})
+        dk_socket.send_pyobj({"req": "upload", "filename": order[1], "video": video, 'checkWithMaster': True})
         dk_socket.close()
     else:
         print("file is already uploaded")
