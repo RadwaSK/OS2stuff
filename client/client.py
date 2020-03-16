@@ -9,10 +9,11 @@ def upload(socket, order):
     # If I can upload
     if message["op"] == "success":
         video = open(order[1],'rb').read()
-        dk_socket = context.socket(zmq.REQ)
+        dk_socket = context.socket(zmq.PAIR)
         dk_socket.connect(message["address"]) #ip:port
         dk_socket.send_pyobj({"req": "upload", "filename": order[1], "video": video})
-        dk_socket.close()
+        print(message["address"])
+        #dk_socket.close()
     else:
         print("file is already uploaded")
     
@@ -42,14 +43,18 @@ def download(socket, order):
     else:
         print("file is not found in any data keeper")
 
-ip = sys.argv[1] # IP master
-Nport = sys.argv[2] # Number of processes of master / number of servers
+
+#run as python3 client.py 192.168.1.2 3
+
+
+ip = sys.argv[1] # IP master example : 192.168.1.2 
+Nport = sys.argv[2] # Number of processes of master / number of servers example: 3
 
 context = zmq.Context()
 # socket of client, type client, connect to all listenToClient servers in master
 socket = context.socket(zmq.REQ)
 for i in range(int(Nport)):
-    socket.connect ("tcp://%s:%s" % ip % str(i+5555))
+    socket.connect ("tcp://"+ip+":"+str(i+5555))
 
 while True:
     order = input("enter your order :")

@@ -1,8 +1,8 @@
 import threading
 import zmq
 import time
-from listenToClient import *
-
+import os
+import sys 
 ################################ SHARED DATA PART #################################
 lookup = {}
 # file table will then store for each file,
@@ -10,28 +10,21 @@ lookup = {}
 file_table = {}
 lock = threading.Lock()
 
-N = ## Number of Data keepers
-# this list shall have
-ports = list()
-processes_num = int(sys.argv[1])
-for i in range(processes_num):
-    ports.append(i+5555)
+with open ("dk_ips.txt", "r") as myfile:
+    data = myfile.readlines()
+for i in data:
+    j=i.split()
+    for k in range(int(j[0])):
+        ip_port =j[1]+":"+str(k+6666) # IP:port of a datakeeper
+        # initially each id/data keeper will save its ip:port and it will be not alive
+        # but then threads will update it with the received msgs from DataKeeperAlive
+        lookup[ip_port] = {'id': i, 'alive': False, 'busy': False}
 
-for i in range(N):
-    # i will act as the id of the data keeper
-    ip_port = ## IP:port of a datakeeper
-    # initially each id/data keeper will save its ip:port and it will be not alive
-    # but then threads will update it with the received msgs from DataKeeperAlive
-    lookup[ip_port] = {'id': i, 'alive': False, 'busy': False}
-    # creating threads each listening to a port
+######################################################################################
 
     # There is something called thread.join() that would make the teh thread finish
     # its execution before the full code execution carries on.
     # I don't know if we're gonna need it, but just in case we do...
-
-######################################################################################
-
-
 
 ############### CHECKING DATA KEEPER ALIVE, and UPDATING LOOKUP ######################
 def resetAlive():
@@ -41,43 +34,123 @@ def resetAlive():
     lock.release()
 
 
-def listenToDataKeepers(socket):
-    start = time.time()
+def listenToDataKeepers():
+    os.system("hostname -I >> ip.txt")
+    with open ("ip.txt", "r") as myfile:
+        data = myfile.readlines()
+    context_alive = zmq.Context()
+    socket_alive = context_alive.socket(zmq.SUB)
+    socket_alive.bind("tcp://%s:5599" % data[0])
+    poller = zmq.Poller()
+    poller.register(socket_alive, zmq.POLLIN)
+    evts = poller.poll(100)
+    socket_alive.setsockopt_string(zmq.SUBSCRIBE, "alive")
+    counter = 0
     while True:
-        msg = socket.recv_string()
+        msg = socket_alive.recv_string()
+        counter+=1
         alive, ip = msg.split()
         lock.acquire()
         lookup[ip]['alive'] = True
+        print(lookup)
         lock.release()
-        if time.time() - start == 1:
-            start = time.time()
+        print(lookup)
+        if counter == len(lookup)-1:
+            time.sleep(1)
             resetAlive()
 ####################################################
 
+########################## listen to client ####################
+def getAvailableDataKeeper(file_name):
+    # It will wait till it finds an alive data keeper and sends its ip
+    while True:
+        lock.acquire()
+        for ip in lookup:
+            if lookup[ip]['alive'] and not lookup[ip]['busy']:
+                if file_name not in file_table:
+                    lock.release()
+                    return "success" , ip
+                else :
+                    # The file already exists, so do nothing
+                    lock.release()
+                    return "founded" , "000.0.0.0:0000"
+        lock.release()
 
 
-# Argv should be sth like this
-# 'listener_to_alive_ip_port'
+def getNode(filename):
+    # not sure if returning first data keeper having the file or we should randomize it
+    lock.acquire()
+    if filename in file_table.keys():
+        # waiting till I find a not-busy and alive datakeeper from those having the file
+        while True:
+            # looping on list of data keepers having this file
+            for ip_port in file_table[filename]:
+                if lookup[ip_port]['alive'] and not lookup[ip_port]['busy']:
+                    lock.release()
+                    return 'found', ip_port
+    else:
+        lock.release()
+        return 'not found', '000.0.0.0:000'
 
-listener_to_alive_ip_port = sys.argv[1]
+def listen_2_client(id):
+    if not os.path.isfile('ip.txt'):
+        os.system("hostname -I >> ip.txt")
 
-context = zmq.Context()
-alive_socket = context.socket(zmq.SUB)
-alive_socket.bind("tcp://%s" % listener_to_alive_ip_port)
+    with open ("ip.txt", "r") as myfile:
+        data = myfile.readlines()
 
+    context = zmq.Context()
+    socket = context.socket(zmq.REP) # type server
+    socket.bind("tcp://"+ (data[0].split())[0] +":"+str(id+5555)) # Ports is from SharedMemory, data[0] is IP
+
+    while True:
+        # receive order from client
+        req_msg = socket.recv_pyobj()
+        # I am not sure h3ml eh be l node id l sra7a bs ktbah just in case
+        if req_msg['req'] == "upload":
+            cond, node_data = getAvailableDataKeeper(req_msg['filename'])  # function to be implemented that
+            # checks on look-up table and sends id
+            # of first alive data keeper
+            address = "tcp://" + str(node_data)
+            # send condition and address back to client
+            socket.send_pyobj({"op": cond, "address": address})
+            # make Node port busy
+            lock.acquire()
+            lookup[node_data]['busy'] = True
+            lock.release()
+            #recieving ack from data keeper
+            socket_data = context.socket(zmq.PAIR) # type server
+            socket_data.connect(address)
+            rec_msg = socket_data.recv_pyobj()
+            print (rec_msg)
+            socket_data.close()
+            lock.acquire()
+            #file_table
+            lookup[node_data]['busy'] = False
+            lock.release()
+        elif req_msg['req'] == 'download':
+            cond, node_data = getNode(req_msg['file_name'])  # function to be implemented that
+            # gets node of data keeper storing file_name
+            address = "tcp://" + node_data
+            msg = {'op': cond, 'address': address}
+            # send ip:port back to client
+            socket.send_pyobj(msg)
+            # ANA M4 3MLA 7WAR L BUSY HERE YET!!   -> done
+            lock.acquire()
+            lookup[node_data]['busy'] = True
+            lock.release()
+            socket_data = context.socket(zmq.PAIR) # type server
+            socket_data.bind(address)
+            m_dummy = socket_data.recv_pyobj()
+            lock.acquire()
+            lookup[node_data]['busy'] = False
+            lock.release()
+######################################################################
+# python3 master.py 3
 # Supposedly by the time here, sharedMemory file is already executed
-listener_thread = threading.Thread(target=listenToDataKeepers, name="alive_listener", args=(alive_socket,))
+listener_thread = threading.Thread(target=listenToDataKeepers, name="alive_listener")
 listener_thread.start()
-
-client_listeners = []
-listener_to_clients_ip_port = sys.argv[2]
-N_clients = sys.argv[3]
-
-requests_socket = context.socket(zmq.REP)
-requests_socket.bind("tcp://%s" % listener_to_clients_ip_port)
-
-for i in range(N_clients):
-    client_listener = threading.Thread(target=listenToClient, name=str("client_listener#" + str(i)),
-                                       args=(requests_socket,))
-    client_listeners.append(client_listener)
-    client_listener.start()
+n=int(sys.argv[1])
+for i in range(n):
+    listen_to_client = threading.Thread(target=listen_2_client, name="client_listener",args=(int(i),))
+    listen_to_client.start()
