@@ -3,7 +3,7 @@ import zmq
 import time
 from listenToClient import *
 
-## SHARED DATA PART
+################################ SHARED DATA PART #################################
 lookup = {}
 # file table will then store for each file,
 # a list of id's for the data keepers saving that file
@@ -33,7 +33,7 @@ for i in range(N):
 
 
 
-## CHECKING DATA KEEPER ALIVE, and UPDATING LOOKUP
+############### CHECKING DATA KEEPER ALIVE, and UPDATING LOOKUP ######################
 def resetAlive():
     lock.acquire()
     for ip in lookup:
