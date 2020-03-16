@@ -126,23 +126,28 @@ def listen_2_client(id):
             file_table[rec_msg['filename']]=list(lookup[node_data]['id'])
             lookup[node_data]['busy'] = False
             lock.release()
+
         elif req_msg['req'] == 'download':
-            cond, node_data = getNode(req_msg['file_name'])  # function to be implemented that
-            # gets node of data keeper storing file_name
+            # get the node that has this file
+            cond, node_data = getNode(req_msg['file_name'])
             address = "tcp://" + node_data
             msg = {'op': cond, 'address': address}
             # send ip:port back to client
             socket.send_pyobj(msg)
-            # ANA M4 3MLA 7WAR L BUSY HERE YET!!   -> done
+            # set this data keeper as busy since client will be downloading from it
             lock.acquire()
             lookup[node_data]['busy'] = True
             lock.release()
-            socket_data = context.socket(zmq.PAIR) # type server
-            socket_data.bind(address)
-            m_dummy = socket_data.recv_pyobj()
+            # create another socket to receive from data keeper
+            dk_socket = context.socket(zmq.PULL) # type PULL
+            dk_socket.connect(address)
+            # This is done to know that the downloading is done
+            m_dummy = dk_socket.recv_pyobj()
             lock.acquire()
             lookup[node_data]['busy'] = False
             lock.release()
+            dk_socket.close()
+
 ######################################################################
 # python3 master.py 3
 # Supposedly by the time here, sharedMemory file is already executed

@@ -27,7 +27,7 @@ def download(socket, order):
     # If I can upload
     if message['op'] == "found":
         # Open a client socket to connect to the data keeper
-        dk_socket = context.socket(zmq.REQ)
+        dk_socket = context.socket(zmq.PULL)
         dk_socket.connect(message["address"])  # tcp://ip:port
         # requesting the file from the data keeper having it
         dk_socket.send_pyobj(req_msg)
