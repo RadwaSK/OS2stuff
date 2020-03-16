@@ -54,7 +54,6 @@ def listenToDataKeepers():
         lookup[ip]['alive'] = True
         print(lookup)
         lock.release()
-        print(lookup)
         if counter == len(lookup)-1:
             time.sleep(1)
             resetAlive()
@@ -119,13 +118,12 @@ def listen_2_client(id):
             lookup[node_data]['busy'] = True
             lock.release()
             #recieving ack from data keeper
-            socket_data = context.socket(zmq.PAIR) # type server
-            socket_data.connect(address)
+            socket_data = context.socket(zmq.PULL) # type server
+            socket_data.connect("tcp://" + (node_data.split(':'))[0]+":8888")
             rec_msg = socket_data.recv_pyobj()
-            print (rec_msg)
-            socket_data.close()
+            #{'success': True, 'filename': '1.mp4'}
             lock.acquire()
-            #file_table
+            file_table[rec_msg['filename']]=list(lookup[node_data]['id'])
             lookup[node_data]['busy'] = False
             lock.release()
         elif req_msg['req'] == 'download':

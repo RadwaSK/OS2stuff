@@ -9,7 +9,7 @@ port = sys.argv[1] # port of the datakeeper
 
 context = zmq.Context()
 # Socket, type server
-socket = context.socket(zmq.PAIR)
+socket = context.socket(zmq.PULL)
 
 os.system("hostname -I >> ip.txt")
 
@@ -32,7 +32,7 @@ while True :
         video = msg['video']
         with open (path,"wb") as output:
             output.write(video)
-        socket_master = context.socket(zmq.PAIR) 
+        socket_master = context.socket(zmq.PUSH) 
         socket_master.bind("tcp://%s:8888" %str((data[0].split())[0]))
         socket_master.send_pyobj({'success': True, 'filename':filename})
         socket_master.close()

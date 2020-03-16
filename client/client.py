@@ -9,11 +9,10 @@ def upload(socket, order):
     # If I can upload
     if message["op"] == "success":
         video = open(order[1],'rb').read()
-        dk_socket = context.socket(zmq.PAIR)
+        dk_socket = context.socket(zmq.PUSH)
         dk_socket.connect(message["address"]) #ip:port
         dk_socket.send_pyobj({"req": "upload", "filename": order[1], "video": video})
-        print(message["address"])
-        #dk_socket.close()
+        dk_socket.close()
     else:
         print("file is already uploaded")
     
