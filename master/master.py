@@ -38,34 +38,38 @@ def resetAlive():
 
 def listenToDataKeepers():
     os.system("hostname -I >> ip.txt")
-    os.system("hostname -I >> ip.txt")
+
     with open ("ip.txt", "r") as myfile:
         data = myfile.readlines()
 
     ip = data[0].split()[0]
+
     context_alive = zmq.Context()
     socket_alive = context_alive.socket(zmq.SUB)
     socket_alive.bind("tcp://%s:5599" % ip)
-    poller = zmq.Poller()
-    poller.register(socket_alive, zmq.POLLIN)
-    evts = poller.poll(100)
+
     socket_alive.setsockopt_string(zmq.SUBSCRIBE, "alive")
-    counter = 0
+    socket_alive.RCVTIMEO = 20
+
     while True:
-        msg = socket_alive.recv_string()
-        counter += 1
-        alive, ip = msg.split()
-        lock.acquire()
-        lookup[ip]['alive'] = True
-        print(lookup)
-        lock.release()
-        if counter == len(lookup)-1:
-            time.sleep(1)
-            resetAlive()
+        #assume they all did
+        resetAlive()
+        #which send me so it is alive
+        for i in  lookup.keys():
+            try:
+                msg = socket_alive.recv_string()
+                alive, ip_port = msg.split()
+                lock.acquire()
+                lookup[ip_port]['alive'] = True
+                lock.release()
+            except:
+                pass
+        time.sleep(0.8)
+        
 
 
 ################################################################
-########################## listen to client ####################
+######################## listen to client ######################
 def getAvailableDataKeeper(file_name):
     # It will wait till it finds an alive data keeper and sends its ip
     while True:
