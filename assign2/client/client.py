@@ -57,18 +57,18 @@ def download(socket, order):
         print("file is not found in any data keeper")
 
 
-#run as python3 client.py 192.168.1.2 3
+#run as python3 client.py 3
 
 
-#os.system("hostname -I >> ip.txt")
-#os.system("hostname -I >> ip.txt")
+os.system("hostname -I >> ip.txt")
+os.system("hostname -I >> ip.txt")
 
-#with open ("ip.txt", "r") as myfile:
-#    data = myfile.readlines()
+with open ("ip.txt", "r") as myfile:
+   data = myfile.readlines()
 
-#ip = data[0].split()[0]
-ip = sys.argv[1]
-Nport = sys.argv[2] # Number of processes of master / number of servers example: 3
+ip = data[0].split()[0]
+# ip = sys.argv[1]
+Nport = sys.argv[1] # Number of processes of master / number of servers example: 3
 
 context = zmq.Context()
 # socket of client, type client, connect to all listenToClient servers in master

@@ -55,7 +55,7 @@ def listenToDataKeepers():
         #assume they all did
         resetAlive()
         #which send me so it is alive
-        for i in  lookup.keys():
+        for i in  range(len(lookup)):
             try:
                 msg = socket_alive.recv_string()
                 alive, ip_port = msg.split()
@@ -64,7 +64,7 @@ def listenToDataKeepers():
                 lock.release()
             except:
                 pass
-        time.sleep(0.8)
+        time.sleep(3)
         
 
 
@@ -88,17 +88,18 @@ def getAvailableDataKeeper(file_name):
 
 def getNode(filename):
     # not sure if returning first data keeper having the file or we should randomize it
-    lock.acquire()
+    readLock = threading.Lock()
+    readLock.acquire()
     if filename in file_table.keys():
         # waiting till I find a not-busy and alive datakeeper from those having the file
         while True:
             # looping on list of data keepers having this file
-            for ip_port in file_table[filename]:
-                if lookup[ip_port]['alive'] and not lookup[ip_port]['busy']:
-                    lock.release()
+            for ip_port in lookup.keys():
+                if lookup[ip_port]['alive'] and not lookup[ip_port]['busy'] and ip_port.split(':')[0] in file_table[filename]:
+                    readLock.release()
                     return 'found', ip_port
     else:
-        lock.release()
+        readLock.release()
         return 'not found', '000.0.0.0:000'
 
 
@@ -112,6 +113,7 @@ def listen_2_client(id):
         data = myfile.readlines()
 
     context = zmq.Context()
+    master_ip = data[0].split()[0]
     socket = context.socket(zmq.REP)  # type server
     socket.bind("tcp://"+ (data[0].split())[0] +":"+str(id+5555)) # Ports is from SharedMemory, data[0] is IP
 
@@ -145,13 +147,13 @@ def listen_2_client(id):
             #recieving ack from data keeper
             socket_data = context.socket(zmq.PULL) # type server
             dk_port = str(int(port) + 100)
-            socket_data.connect("tcp://" + ip+ ':' + dk_port)
+            socket_data.connect("tcp://" + master_ip + ':' + dk_port)
             print("connected to datakeeper")
             rec_msg = socket_data.recv_pyobj()
             print("acknowledgment is received from datakeeper")
             #{'success': True, 'filename': '1.mp4'}
             lock.acquire()
-            file_table[rec_msg['filename']] = [ip_port]
+            file_table[rec_msg['filename']] = [ip]
             lookup[ip_port]['busy'] = False
             lock.release()
             socket_data.close()
@@ -185,7 +187,7 @@ def listen_2_client(id):
             #recieving ack from data keeper
             socket_data = context.socket(zmq.PULL) # type server
             dk_port = str(int(port) + 100)
-            socket_data.connect("tcp://" + ip +":" + dk_port)
+            socket_data.connect("tcp://" + master_ip +":" + dk_port)
             print("connected to datakeeper")
             rec_msg = socket_data.recv_string()
             print("acknowledgment is received from datakeeper")
@@ -199,59 +201,72 @@ def listen_2_client(id):
 ######################################################################
 ########################### N-Replicate ##############################
 def getFreeIP(filename, dk):
+    if dk.split(':')[0] not in file_table[filename]:
+        return '0000.0.0.0'
     for dk_ip in lookup:
-        if dk_ip == dk:
+        if dk_ip.split(':')[0] == dk.split(':')[0]:
             continue
-        if dk_ip not in file_table[filename] and lookup[dk_ip]['alive'] and not lookup[dk_ip]['busy']:
+        if dk_ip.split(':')[0] not in file_table[filename] and lookup[dk_ip]['alive'] and not lookup[dk_ip]['busy']:
             return dk_ip
     return '0000.0.0.0'
 
 
 
 def replicate():
+    replicateLock = threading.Lock()
     replicate_context = zmq.Context()
-    start = time.time()
     while True:
-        # I'll check every three seconds .. this is an assumption
-        if time.time() - start == 3:
-            lock.acquire()
-            for file_name in file_table:
-                # If it exists on less that three machines
-                if len(file_table[file_name]) < 3:
-                    # for each data keeper in file_table
-                    for dk_ip in file_table[file_name]:
-                        if lookup[dk_ip]['alive'] and not lookup[dk_ip]['busy']:
-                            # get ip of a free dk that doesn't have the file
-                            new_dk_ip = getFreeIP(file_name, dk_ip)
-                            # if none found
-                            if new_dk_ip == '0000.0.0.0':
-                                break
-                            # create a socket to get the file from data keeper
-                            # type of socket is client
-                            print("found a dk having the file")
-                            dk_socket = replicate_context.socket(zmq.PAIR)
-                            dk_socket.connect(str("tcp://" + dk_ip))
-                            print("connected to it")
-                            lookup[dk_ip]['busy'] = True
-                            dk_socket.send_pyobj({'req': 'download', 'filename': file_name, "checkWithMaster": False})
-                            print("sent request to dk")
-                            # msg shall include the filename and the video itself
-                            msg = dk_socket.recv_pyobj()
-                            lookup[dk_ip]['busy'] = False
-                            dk_socket.close()
-                            # now connect to the free dk
-                            dk_socket = replicate_context.socket(zmq.PAIR)
-                            dk_socket.connect(str("tcp://" + new_dk_ip))
-                            # sending video to it
-                            dk_socket.send_pyobj({'req': 'upload', 'filename': msg['filename'], 'video': msg['video'], 'checkWithMaster': False})
-                            dk_socket.close()
-                            # add dk to list
-                            file_table[file_name].append(new_dk_ip)
-                            if len(file_table[file_name]) >= 3:
-                                break
-                    break
-            lock.release()
-            start = time.time()
+        replicateLock.acquire()
+        for file_name in file_table:
+            # If it exists on less that three machines
+            if len(file_table[file_name]) < 3:
+                # for each data keeper in file_table
+                for dk_ip in lookup.keys():
+                    if lookup[dk_ip]['alive'] and not lookup[dk_ip]['busy']:
+                        # get ip of a free dk that doesn't have the file
+                        new_dk_ip = getFreeIP(file_name, dk_ip)
+                        replicateLock.release()
+                        new_dk_ip_only = new_dk_ip.split(':')[0]
+                        # if none found
+                        if new_dk_ip == '0000.0.0.0':
+                            break
+                        # create a socket to get the file from data keeper
+                        # type of socket is client
+                        print("found a dk having the file")
+                        dk_socket = replicate_context.socket(zmq.PAIR)
+                        dk_socket.connect(str("tcp://" + dk_ip))
+                        print("connected to it")
+                        
+                        replicateLock.acquire()
+                        lookup[dk_ip]['busy'] = True
+                        replicateLock.release()
+
+                        dk_socket.send_pyobj({'req': 'download', 'filename': file_name, "checkWithMaster": False})
+                        print("sent request to dk")
+                        # msg shall include the filename and the video itself
+                        msg = dk_socket.recv_pyobj() # receive video
+                        print("video is received")
+                        
+                        replicateLock.acquire()
+                        lookup[dk_ip]['busy'] = False
+                        replicateLock.release()
+                        
+                        dk_socket.close()
+                        # now connect to the free dk
+                        dk_socket = replicate_context.socket(zmq.PAIR)
+                        dk_socket.connect(str("tcp://" + new_dk_ip))
+                        # sending video to it
+                        print("connected to other datakeeper")
+                        dk_socket.send_pyobj({'req': 'upload', 'filename': msg['filename'], 'video': msg['video'], 'checkWithMaster': False})
+                        dk_socket.close()
+                        print("file is uploaded successfully")
+                        # add dk to list
+                        replicateLock.acquire()
+                        file_table[file_name].append(new_dk_ip_only)
+                        break
+                break
+        replicateLock.release()
+        time.sleep(3)
 
 
 ############################################################################################

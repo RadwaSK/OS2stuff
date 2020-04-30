@@ -3,9 +3,11 @@ import sys
 import os
 
 
-# python3 datakeeper.py 127.0.0.1 6666
-ip_master = sys.argv[1]
-port = sys.argv[2]  # port of the datakeeper
+# python3 datakeeper.py 6666 1
+# ip_master = sys.argv[1]
+
+port = sys.argv[1]  # port of the datakeeper
+indx = int(sys.argv[2])
 
 context = zmq.Context()
 
@@ -17,7 +19,8 @@ os.system("hostname -I >> ip.txt")
 with open ("ip.txt", "r") as myfile:
     data = myfile.readlines()
 
-ip = data[0].split()[0]
+ip_master = data[0].split()[0]
+ip = data[0].split()[indx]
 addr = "tcp://" + ip + ":" + port
 socket.bind(addr)
 
@@ -43,6 +46,7 @@ while True:
         print("file is uploaded successfully")
         if req['checkWithMaster']:
             socket_master.send_pyobj({'success': True, 'filename': filename})
+            print("acknowkledgment is sent to master")
 
     elif req["req"] == "download":
         filename = req['filename']
