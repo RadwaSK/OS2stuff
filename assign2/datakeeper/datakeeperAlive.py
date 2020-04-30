@@ -4,7 +4,7 @@ import os
 import sys
 
 
-# can run like that : python3 datakeeperAlive.py 6666
+# can run like that : python3 datakeeperAlive.py 127.0.0.1 6666
 
 with open ("ip.txt", "r") as myfile:
     data = myfile.readlines()

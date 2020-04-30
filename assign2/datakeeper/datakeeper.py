@@ -4,8 +4,8 @@ import os
 
 
 # python3 datakeeper.py 6666
-
-port = sys.argv[1]  # port of the datakeeper
+ip_master = sys.argv[1]
+port = sys.argv[2]  # port of the datakeeper
 
 context = zmq.Context()
 
@@ -22,7 +22,7 @@ addr = "tcp://" + ip + ":" + port
 socket.bind(addr)
 
 socket_master = context.socket(zmq.PUSH)
-master_address = "tcp://" + ip + ':' + str(int(port)+100)
+master_address = "tcp://" + ip_master + ':' + str(int(port)+100)
 socket_master.bind(master_address)
 
 while True:
