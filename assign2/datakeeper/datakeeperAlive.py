@@ -9,9 +9,10 @@ import sys
 with open ("ip.txt", "r") as myfile:
     data = myfile.readlines()
 
-host_ip = data[0].split()[0]
+my_ip = data[0].split()[0]
 
-port = sys.argv[1]
+host_ip = sys.argv[1]
+port = sys.argv[2]
 
 socket = zmq.Context().socket(zmq.PUB)
 shift = int(port) % 13
@@ -19,6 +20,7 @@ ip_port = "tcp://" + host_ip + ":" + "5599"
 socket.connect(ip_port)
 
 while True:
-    string = "alive " + host_ip + ':' + port
+    #string = "alive " + my_ip + ':' + port
+    string = "alive " + my_ip
     socket.send_string(string)
     time.sleep(1)
