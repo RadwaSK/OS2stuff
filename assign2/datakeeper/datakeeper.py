@@ -3,7 +3,7 @@ import sys
 import os
 
 
-# python3 datakeeper.py 6666
+# python3 datakeeper.py 127.0.0.1 6666
 ip_master = sys.argv[1]
 port = sys.argv[2]  # port of the datakeeper
 
